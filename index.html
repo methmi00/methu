@@ -404,10 +404,10 @@
 <div class="fx-layer" id="sparkle-layer" aria-hidden="true"></div>
 
 <!-- music toggle -->
-<button id="music-toggle" aria-label="Toggle background music" title="Play/pause music">🔇</button>
+<button id="music-toggle" aria-label="Toggle background music" title="Play/pause music">🔊</button>
 <audio id="bg-audio" loop>
   <!-- Replace src below with your own romantic music file -->
-  <source src="your-music-file.mp3" type="audio/mpeg">
+  <source src="audio.mp3" type="audio/mpeg">
 </audio>
 
 <!-- ===================== HERO ===================== -->
@@ -713,12 +713,40 @@ document.addEventListener('click', (e) => {
   setTimeout(() => heart.remove(), 1000);
 });
 
-/* ============ Music Toggle ============ */
+/* ============ Music Toggle (default: ON, 60% volume) ============ */
 const musicBtn = document.getElementById('music-toggle');
 const audio = document.getElementById('bg-audio');
-let playing = false;
-musicBtn.addEventListener('click', () => {
+audio.volume = 0.6;
+let playing = true;
+musicBtn.textContent = '🔊';
+
+function tryAutoplay(){
+  audio.play().then(() => {
+    playing = true;
+    musicBtn.textContent = '🔊';
+  }).catch(() => {
+    /* Browser blocked autoplay-with-sound until a user gesture.
+       Fall back to starting on the very first interaction of any kind. */
+    playing = false;
+    musicBtn.textContent = '🔇';
+    const gestureEvents = ['click','pointerdown','touchstart','keydown'];
+    const startOnFirstInteraction = () => {
+      audio.volume = 0.6;
+      audio.play().then(() => {
+        playing = true;
+        musicBtn.textContent = '🔊';
+      }).catch(()=>{ /* file may not exist yet - user can add their own */ });
+      gestureEvents.forEach(evt => document.removeEventListener(evt, startOnFirstInteraction));
+    };
+    gestureEvents.forEach(evt => document.addEventListener(evt, startOnFirstInteraction, { once:true, passive:true }));
+  });
+}
+tryAutoplay();
+
+musicBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
   if(!playing){
+    audio.volume = 0.6;
     audio.play().catch(()=>{ /* file may not exist yet - user can add their own */ });
     musicBtn.textContent = '🔊';
     playing = true;
