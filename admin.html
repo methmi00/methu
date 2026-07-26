@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Submissions</title>
+<style>
+  :root{
+    --pink:#ffd6e8; --pink-deep:#ff9ec7; --lavender:#e3d9ff; --peach:#ffe3d1;
+    --white:#fffaf9; --text:#6b4a5a;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    font-family:'Segoe UI',Arial,sans-serif;
+    background:linear-gradient(160deg, var(--peach) 0%, var(--pink) 45%, var(--lavender) 100%);
+    color:var(--text);
+    min-height:100vh;
+    display:flex; align-items:center; justify-content:center;
+    padding:24px;
+  }
+  .panel{
+    width:100%; max-width:720px;
+    background:rgba(255,255,255,.55); backdrop-filter:blur(14px);
+    border:1px solid rgba(255,255,255,.6); border-radius:24px;
+    box-shadow:0 8px 32px rgba(255,140,180,.25);
+    padding:32px;
+  }
+  h1{ font-size:1.4rem; margin-bottom:4px; }
+  .sub{ font-size:.85rem; opacity:.75; margin-bottom:20px; }
+  #lock{ text-align:center; padding:20px 0; }
+  #lock input{
+    padding:12px 16px; border-radius:12px; border:1px solid rgba(255,140,180,.4);
+    width:100%; max-width:260px; font-size:1rem; margin-bottom:12px;
+  }
+  #lock button, .refresh-btn{
+    padding:12px 24px; border:none; border-radius:50px; cursor:pointer;
+    background:linear-gradient(135deg,#ff9ec7,#ff6fa5); color:#fff; font-weight:600;
+  }
+  table{ width:100%; border-collapse:collapse; margin-top:10px; font-size:.9rem; }
+  th, td{ text-align:left; padding:10px 8px; border-bottom:1px solid rgba(107,74,90,.15); }
+  th{ font-size:.8rem; text-transform:uppercase; opacity:.7; }
+  tr:hover{ background:rgba(255,255,255,.35); }
+  .badge{ padding:3px 10px; border-radius:20px; font-size:.75rem; font-weight:600; }
+  .badge.yes{ background:#ffd6e8; color:#c23a6d; }
+  .badge.talk{ background:#e3d9ff; color:#5b3f8a; }
+  .wa-link{ color:#1f9c52; text-decoration:none; font-weight:600; }
+  .wa-link:hover{ text-decoration:underline; }
+  #empty, #error{ text-align:center; padding:30px 0; opacity:.75; }
+  .top-row{ display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+  .hidden{ display:none; }
+</style>
+</head>
+<body>
+
+<div class="panel">
+  <!-- Simple client-side password gate (not real security — just keeps casual eyes out). -->
+  <div id="lock">
+    <h1>🔒 Admin Panel</h1>
+    <p class="sub">Enter your password to view submissions</p>
+    <input type="password" id="pwInput" placeholder="Password">
+    <br>
+    <button id="pwBtn">Unlock</button>
+    <p class="sub" id="pwError" style="color:#d14c74;"></p>
+  </div>
+
+  <div id="content" class="hidden">
+    <div class="top-row">
+      <div>
+        <h1>Submissions 💌</h1>
+        <p class="sub">Numbers she's sent through the page</p>
+      </div>
+      <button class="refresh-btn" id="refreshBtn">Refresh</button>
+    </div>
+    <div id="tableWrap"></div>
+    <div id="empty" class="hidden">No submissions yet — check back soon 🌸</div>
+    <div id="error" class="hidden"></div>
+  </div>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+/* ============================================================
+   PASTE THE SAME firebaseConfig you used in index.html here.
+   ============================================================ */
+const firebaseConfig = {
+  apiKey: "PASTE_YOUR_API_KEY",
+  authDomain: "PASTE_YOUR_PROJECT.firebaseapp.com",
+  projectId: "PASTE_YOUR_PROJECT_ID",
+  storageBucket: "PASTE_YOUR_PROJECT.appspot.com",
+  messagingSenderId: "PASTE_YOUR_SENDER_ID",
+  appId: "PASTE_YOUR_APP_ID"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+/* Change this to whatever password you want to gate the panel with.
+   NOTE: this is only a casual deterrent since the code is visible in
+   the page source — don't rely on it for real security. */
+const ADMIN_PASSWORD = "changeme123";
+
+const lock = document.getElementById('lock');
+const content = document.getElementById('content');
+const pwInput = document.getElementById('pwInput');
+const pwBtn = document.getElementById('pwBtn');
+const pwError = document.getElementById('pwError');
+const tableWrap = document.getElementById('tableWrap');
+const emptyEl = document.getElementById('empty');
+const errorEl = document.getElementById('error');
+const refreshBtn = document.getElementById('refreshBtn');
+
+pwBtn.addEventListener('click', unlock);
+pwInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') unlock(); });
+
+function unlock(){
+  if(pwInput.value === ADMIN_PASSWORD){
+    lock.classList.add('hidden');
+    content.classList.remove('hidden');
+    loadSubmissions();
+  } else {
+    pwError.textContent = 'Wrong password, try again.';
+  }
+}
+
+refreshBtn.addEventListener('click', loadSubmissions);
+
+async function loadSubmissions(){
+  tableWrap.innerHTML = '';
+  emptyEl.classList.add('hidden');
+  errorEl.classList.add('hidden');
+  try{
+    const snap = await db.collection('submissions').orderBy('createdAt', 'desc').get();
+    if(snap.empty){
+      emptyEl.classList.remove('hidden');
+      return;
+    }
+    const rows = snap.docs.map(doc => {
+      const d = doc.data();
+      const when = d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toLocaleString() : '—';
+      const badgeClass = d.answer === 'yes' ? 'yes' : 'talk';
+      const badgeText = d.answer === 'yes' ? 'Yes 💗' : "Let's talk 🌸";
+      const digits = (d.whatsapp || '').replace(/[^0-9]/g,'');
+      return `<tr>
+        <td>${when}</td>
+        <td><span class="badge ${badgeClass}">${badgeText}</span></td>
+        <td>${d.whatsapp || ''}</td>
+        <td><a class="wa-link" target="_blank" rel="noopener" href="https://wa.me/${digits}">Message on WhatsApp →</a></td>
+      </tr>`;
+    }).join('');
+    tableWrap.innerHTML = `<table>
+      <thead><tr><th>When</th><th>Answer</th><th>Number</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  }catch(err){
+    console.error(err);
+    errorEl.classList.remove('hidden');
+    errorEl.textContent = 'Could not load submissions. Check your Firebase config and Firestore rules.';
+  }
+}
+</script>
+</body>
+</html>
