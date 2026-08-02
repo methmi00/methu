@@ -393,6 +393,7 @@
     color:var(--text); margin-bottom:14px; outline:none;
   }
   .wa-input:focus{ border-color:var(--glow); }
+  textarea.wa-input{ resize:vertical; min-height:90px; font-family:'Poppins',sans-serif; }
   .wa-submit{
     width:100%; font-family:'Poppins',sans-serif; font-weight:600; font-size:.95rem;
     padding:13px; border:none; border-radius:50px; cursor:pointer;
@@ -544,30 +545,20 @@
   <div class="wa-card glass" style="position:relative;">
     <button class="wa-close" id="waClose" aria-label="Close">✕</button>
     <h3 id="waTitle">One more thing 🌸</h3>
-    <p>Drop your WhatsApp number below so I can message you 💗</p>
-    <input type="tel" id="waInput" class="wa-input" placeholder="e.g. 947XXXXXXXX" inputmode="numeric" autocomplete="tel">
+    <p>Add a message (optional) 💗</p>
+    <textarea id="waInput" class="wa-input" placeholder="Say anything you'd like... (optional)" rows="4"></textarea>
     <button class="wa-submit" id="waSubmit">Send 💌</button>
     <div class="wa-status" id="waStatus"></div>
   </div>
 </div>
 
-<footer>made with 💗 for Methmi</footer>
+<footer>made with 💗 for Methu</footer>
 
 <!-- Firebase (used to send her WhatsApp number to your admin panel) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
-/* ============================================================
-   FIREBASE SETUP — READ ME
-   1. Go to https://console.firebase.google.com -> Add project (free).
-   2. Inside the project: Build > Firestore Database > Create database
-      -> choose "Start in test mode" (fine for this personal use).
-   3. Go to Project settings (gear icon) > General > "Your apps" >
-      click the </> (web) icon, register the app, and copy the config
-      object it gives you. Paste it below, replacing the placeholder.
-   4. Open admin.html (also provided) on YOUR device to see submissions.
-      It uses the SAME config, so paste it there too.
-   ============================================================ */
+/* ============================================================ */
 const firebaseConfig = {
   apiKey: "AIzaSyA_svoGgHfXLInK5lGEIYfcMy3KnveLDLY",
   authDomain: "rn3thrn.firebaseapp.com",
@@ -579,10 +570,10 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-async function saveWhatsappNumber({ answer, whatsapp }){
+async function saveWhatsappNumber({ answer, message }){
   await db.collection('submissions').add({
     answer,
-    whatsapp,
+    message,
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   });
 }
@@ -734,17 +725,12 @@ talkBtn.addEventListener('click', () => {
 waClose.addEventListener('click', () => waOverlay.classList.remove('show'));
 
 waSubmit.addEventListener('click', async () => {
-  const number = waInput.value.trim();
-  if(!number || number.length < 7){
-    waStatus.style.color = '#d14c74';
-    waStatus.textContent = 'Please enter a valid number 🌸';
-    return;
-  }
+  const message = waInput.value.trim();
   waSubmit.disabled = true;
   waStatus.style.color = 'var(--text)';
   waStatus.textContent = 'Sending...';
   try{
-    await saveWhatsappNumber({ answer: lastAnswer, whatsapp: number });
+    await saveWhatsappNumber({ answer: lastAnswer, message });
     waStatus.style.color = '#ff6fa5';
     waStatus.textContent = 'Got it! Talk soon 💗';
     setTimeout(() => waOverlay.classList.remove('show'), 1600);
