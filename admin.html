@@ -43,8 +43,6 @@
   .badge{ padding:3px 10px; border-radius:20px; font-size:.75rem; font-weight:600; }
   .badge.yes{ background:#ffd6e8; color:#c23a6d; }
   .badge.talk{ background:#e3d9ff; color:#5b3f8a; }
-  .wa-link{ color:#1f9c52; text-decoration:none; font-weight:600; }
-  .wa-link:hover{ text-decoration:underline; }
   #empty, #error{ text-align:center; padding:30px 0; opacity:.75; }
   .top-row{ display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
   .hidden{ display:none; }
@@ -140,16 +138,15 @@ async function loadSubmissions(){
       const when = d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toLocaleString() : '—';
       const badgeClass = d.answer === 'yes' ? 'yes' : 'talk';
       const badgeText = d.answer === 'yes' ? 'Yes 💗' : "Let's talk 🌸";
-      const digits = (d.whatsapp || '').replace(/[^0-9]/g,'');
+      const msg = (d.message || '').trim();
       return `<tr>
         <td>${when}</td>
         <td><span class="badge ${badgeClass}">${badgeText}</span></td>
-        <td>${d.whatsapp || ''}</td>
-        <td><a class="wa-link" target="_blank" rel="noopener" href="https://wa.me/${digits}">Message on WhatsApp →</a></td>
+        <td>${msg ? msg.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])) : '<span style="opacity:.5;">— no message —</span>'}</td>
       </tr>`;
     }).join('');
     tableWrap.innerHTML = `<table>
-      <thead><tr><th>When</th><th>Answer</th><th>Number</th><th></th></tr></thead>
+      <thead><tr><th>When</th><th>Answer</th><th>Message</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
   }catch(err){
